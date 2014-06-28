@@ -10,7 +10,7 @@ import pyasn1_modules.rfc2459 as rfc2459
 if len(sys.argv) >= 2:
     pem = read_file(sys.argv[1])
 else:
-    pem = read_file("./cr1.pem")
+    pem = read_file("./cr3.pem")
 
 der = x509_pem_to_der(pem)
 

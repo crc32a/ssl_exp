@@ -1,5 +1,6 @@
 import base64
 import string
+import six
 import os
 
 BEG_BLOCK = 1
@@ -13,8 +14,12 @@ block_type_map = {
 
 
 def read_file(file_name):
-    with open(os.path.expanduser(file_name), "rb") as fp:
-        return fp.read()
+    if six.PY3:
+        with open(os.path.expanduser(file_name), "rb") as fp:
+            return fp.read().decode()
+    else:
+        with open(os.path.expanduser(file_name),"rb") as fp:
+            return fp.read()
 
 
 def pem_to_der(pemblock,strip_pre=1, strip_end=2):
@@ -22,7 +27,7 @@ def pem_to_der(pemblock,strip_pre=1, strip_end=2):
     if len(lines) < 2:
         raise IOError("Could not base 64 decode pemblock. "
                       "Begin and End lines could not be found")
-    base64str = string.join(lines[strip_pre:-strip_end], "\n")
+    base64str = "\n".join(lines[strip_pre:-strip_end])
     return base64.standard_b64decode(base64str)
 
 
@@ -56,7 +61,7 @@ def split_pem(pemlines):
                     "But was not in a pem block"
                     " at line {0}".format(line_num))
             pemblocklines.append(line)
-            pemblocks.append((blocktype, string.join(pemblocklines, "\n")))
+            pemblocks.append((blocktype, "\n".join(pemblocklines)))
             blocktype = None
 
         #otherwise handle non beg or end block case
