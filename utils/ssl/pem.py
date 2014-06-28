@@ -17,13 +17,12 @@ def read_file(file_name):
         return fp.read()
 
 
-def pemblock_to_der(pemblock):
-    #Strip blank lines cause I don't know they cause problems
-    lines = [l for l in pemblock.split("\n") if len(l) > 0]
+def pem_to_der(pemblock,strip_pre=1, strip_end=2):
+    lines = [l for l in pemblock.split("\n")]
     if len(lines) < 2:
         raise IOError("Could not base 64 decode pemblock. "
                       "Begin and End lines could not be found")
-    base64str = string.join(lines[1:-1], "\n")
+    base64str = string.join(lines[strip_pre:-strip_end], "\n")
     return base64.standard_b64decode(base64str)
 
 
@@ -43,6 +42,7 @@ def split_pem(pemlines):
                     "Unexpected BEGIN block found "
                     "but was already inside a pem block. "
                     " at line {0}".format(line_num))
+            #This is a new block start
             pemblocklines = [line]
             #identify the block type where in
             blocktype = block_type_map[line][0]
@@ -61,9 +61,7 @@ def split_pem(pemlines):
 
         #otherwise handle non beg or end block case
         if blocktype:
-            if len(line) > 0:
-                #Strip blank lines otherwise append to pemblocklines
-                pemblocklines.append(line)
+            pemblocklines.append(line)
     #At the end of the decode run. Make sure were are outside of a block
     if blocktype is not None:
         raise IOError("reached end of pemblock with out END block found")

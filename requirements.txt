@@ -1,2 +1,4 @@
 pyasn1
 pyasn1-modules
+cryptography
+python-dateutil
