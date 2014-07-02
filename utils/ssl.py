@@ -2,7 +2,8 @@ from dateutil.tz import tzutc
 import OpenSSL.crypto
 import datetime
 import six
-import sys
+import pyasn1.codec.der.decoder as decoder
+import pyasn1_modules.rfc2459 as rfc2459
 import os
 import re
 
@@ -22,8 +23,8 @@ class X509(object):
         self.x509 = None
 
     def not_before_after(self):
-        not_before = self.gmtime_to_datetime(self.x509.get_notBefore())
-        not_after = self.gmtime_to_datetime(self.x509.get_notAfter())
+        not_before = self.gmtime_to_utc_datetime(self.x509.get_notBefore())
+        not_after = self.gmtime_to_utc_datetime(self.x509.get_notAfter())
         return not_before, not_after
 
     def get_subject_alt_name(self):
@@ -35,10 +36,32 @@ class X509(object):
                 for alt_name in str(ext).split(", "):
                     alt_name_type, alt_name_val = alt_name.split(":")
                     alt_names.append((alt_name_type,alt_name_val))
+                    if alt_name_type == "DirName":
+                        #search for alt dirname CN and mark as CN
+                        alt_name_type='SubjectAltNameCN'
+                        alt_name_val = ext.get_data()
+                        for cn in self.get_cn_from_dirname(alt_name_val):
+                            alt_names.append((alt_name_type,cn))
         return alt_names
 
     @staticmethod
-    def gmtime_to_datetime(general_time):
+    def get_cn_from_dirname(data):
+        cns = []
+        general_names = decoder.decode(data, asn1Spec=rfc2459.GeneralNames())
+        for general_name in general_names[0]:
+            rdn_seq = general_name.getComponent().getComponent()
+            for rdn in rdn_seq:
+                for attr in rdn:
+                    attr_type = attr.getComponentByName('type')
+                    attr_val = attr.getComponentByName('value')
+                    if attr_type == rfc2459.id_at_commonName:
+                        dirstring = rfc2459.DirectoryString()
+                        (cn,spec) = decoder.decode(attr_val,asn1Spec=dirstring)
+                        cns.append(str(cn.getComponent()))
+        return cns
+
+    @staticmethod
+    def gmtime_to_utc_datetime(general_time):
         m = generalized_time_re.match(general_time)
         if not m:
             raise IOError('could not parse general time')
